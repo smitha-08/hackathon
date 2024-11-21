@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Study Schedule with Pomodoro Timer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #56ccf2, #2f80ed);
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Navigation Bar */
+        nav {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px 0;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            z-index: 10;
+            border-radius: 0 0 20px 20px;
+        }
+
+        nav a {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 12px 20px;
+            text-align: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            margin: 0 15px;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        nav a:hover {
+            background-color: #2f80ed;
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        nav a.active {
+            background-color: #2f80ed;
+            color: white;
+        }
+
+        /* Section Styling */
+        section {
+            padding: 60px 30px;
+            margin-top: 80px;
+            border-radius: 15px;
+            background-color: white;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        section.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        h1, h2 {
+            color: #2f80ed;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 30px;
+        }
+
+        p {
+            text-align: center;
+            font-size: 16px;
+            color: #333;
+            margin: 20px auto;
+            line-height: 1.8;
+            max-width: 700px;
+        }
+
+        /* Card-like Input Forms */
+        .card {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            width: 80%;
+            max-width: 600px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        label {
+            font-size: 16px;
+            color: #333;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: #2f80ed;
+            outline: none;
+        }
+
+        button {
+            background-color: #2f80ed;
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #56ccf2;
+            transform: scale(1.05);
+        }
+
+        /* Table Styling for Schedule */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid #ddd;
+            font-size: 16px;
+        }
+
+        th {
+            background-color: #2f80ed;
+            color: white;
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
+        .course-checkbox {
+            text-align: center;
+        }
+
+        .course-checkbox input {
+            cursor: pointer;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            background-color: #2f80ed;
+            color: white;
+            padding: 10px;
+            margin-top: 40px;
+            font-size: 16px;
+        }
+
+        /* Progress Insights */
+        .progress-insights {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .progress-insights p {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .progress-bar-container {
+            background-color: #ddd;
+            border-radius: 50px;
+            height: 30px;
+            width: 80%;
+            margin: 10px auto;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background-color: #2f80ed;
+            height: 100%;
+            width: 0;
+            border-radius: 50px;
+            transition: width 0.5s ease;
+        }
+
+        /* Analytics Section */
+        .analytics {
+            width: 80%;
+            margin: 20px auto;
+            text-align: center;
+        }
+
+        canvas {
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#home" class="active" onclick="showSection('home')">Home</a>
+        <a href="#addCourse" onclick="showSection('addCourse')">Add Course</a>
+        <a href="#addTodo" onclick="showSection('addTodo')">Add To-Do</a>
+        <a href="#schedule" onclick="showSection('schedule')">Study Schedule</a>
+        <a href="#pomodoro" onclick="showSection('pomodoro')">Pomodoro Timer</a>
+        <a href="#progress" onclick="showSection('progress')">Progress Insights</a>
+        <a href="#analytics" onclick="showSection('analytics')">Analytics</a>
+    </nav>
+
+    <!-- Home Section -->
+    <section id="home" class="active">
+        <h1>Welcome to Your Smart Study Schedule</h1>
+        <p>Use this tool to plan your study schedule, add courses, track tasks, and stay productive with the Pomodoro timer!</p>
+    </section>
+
+    <!-- Add Course Section -->
+    <section id="addCourse">
+        <h2>Add a Course</h2>
+        <div class="card">
+            <form id="courseForm">
+                <label for="course">Course Name:</label>
+                <input type="text" id="course" placeholder="Enter course name">
+                <label for="assignment">Assignment Details:</label>
+                <textarea id="assignment" placeholder="Enter assignment details (e.g., due date)"></textarea>
+                <label for="exam">Exam Date:</label>
+                <input type="date" id="exam">
+                <label for="deadline">Course Deadline:</label>
+                <input type="date" id="deadline">
+                <button type="button" onclick="addCourse()">Add Course</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Add To-Do Section -->
+    <section id="addTodo">
+        <h2>Add a To-Do Task</h2>
+        <div class="card">
+            <form id="todoForm">
+                <label for="courseSelect">Select Course:</label>
+                <select id="courseSelect">
+                    <option value="">Select a Course</option>
+                </select>
+                <label for="todoTask">Task:</label>
+                <input type="text" id="todoTask" placeholder="Task description">
+                <label for="timeRequired">Time Required (hrs):</label>
+                <input type="number" id="timeRequired" placeholder="In hours">
+                <label for="priority">Priority:</label>
+                <input type="radio" id="high" name="priority" value="high"><label for="high">High</label>
+                <input type="radio" id="medium" name="priority" value="medium"><label for="medium">Medium</label>
+                <input type="radio" id="low" name="priority" value="low"><label for="low">Low</label>
+                <button type="button" onclick="addTodo()">Add Task</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Study Schedule Section -->
+    <section id="schedule">
+        <h2>Your Study Schedule</h2>
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th>Course</th>
+                    <th>Task</th>
+                    <th>Time</th>
+                    <th>Priority</th>
+                    <th>Complete</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamic schedule rows will go here -->
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Pomodoro Timer Section -->
+    <section id="pomodoro">
+        <h2>Pomodoro Timer</h2>
+        <div id="timerDisplay">25:00</div>
+        <button onclick="startPomodoro()">Start Timer</button>
+        <button onclick="resetPomodoro()">Reset Timer</button>
+    </section>
+
+    <!-- Progress Insights Section -->
+    <section id="progress">
+        <h2>Progress Insights</h2>
+        <div class="progress-insights">
+            <p>Keep track of your progress and time spent on tasks.</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Analytics Section -->
+    <section id="analytics">
+        <h2>Study Analytics</h2>
+        <div class="analytics">
+            <canvas id="studyChart"></canvas>
+        </div>
+    </section>
+
+    <footer>
+        <p>Smart Study Schedule © 2024</p>
+    </footer>
+
+    <script>
+        // Course Data Storage
+        let courses = [];
+        let todos = [];
+        let completedTasks = 0;
+
+        // Show Section Function
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll("section");
+            sections.forEach((section) => {
+                section.classList.remove("active");
+            });
+            document.getElementById(sectionId).classList.add("active");
+
+            // Update active nav link
+            document.querySelectorAll('nav a').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`nav a[href="#${sectionId}"]`).classList.add('active');
+        }
+
+        // Add Course Function
+        function addCourse() {
+            const courseName = document.getElementById('course').value;
+            const assignmentDetails = document.getElementById('assignment').value;
+            const examDate = document.getElementById('exam').value;
+            const deadline = document.getElementById('deadline').value;
+
+            if (courseName === "" || assignmentDetails === "" || examDate === "" || deadline === "") {
+                alert("Please fill in all fields");
+                return;
+            }
+
+            const course = {
+                name: courseName,
+                assignment: assignmentDetails,
+                exam: examDate,
+                deadline: deadline
+            };
+
+            courses.push(course);
+
+            // Add to select dropdown
+            const courseSelect = document.getElementById('courseSelect');
+            const option = document.createElement('option');
+            option.textContent = courseName;
+            option.value = courseName;
+            courseSelect.appendChild(option);
+
+            document.getElementById('courseForm').reset();
+            alert("Course added successfully!");
+        }
+
+        // Add To-Do Function
+        function addTodo() {
+            const courseSelect = document.getElementById('courseSelect').value;
+            const taskDescription = document.getElementById('todoTask').value;
+            const timeRequired = document.getElementById('timeRequired').value;
+            const priority = document.querySelector('input[name="priority"]:checked').value;
+
+            if (courseSelect === "" || taskDescription === "" || timeRequired === "" || !priority) {
+                alert("Please fill in all fields");
+                return;
+            }
+
+            const todo = {
+                course: courseSelect,
+                task: taskDescription,
+                timeRequired: timeRequired,
+                priority: priority
+            };
+
+            todos.push(todo);
+            updateSchedule();
+            alert("Task added successfully!");
+        }
+
+        // Update Schedule Table
+        function updateSchedule() {
+            const scheduleTable = document.getElementById('scheduleTable').getElementsByTagName('tbody')[0];
+            scheduleTable.innerHTML = '';
+
+            todos.forEach((todo) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${todo.course}</td>
+                    <td>${todo.task}</td>
+                    <td>${todo.timeRequired} hrs</td>
+                    <td>${todo.priority}</td>
+                    <td class="course-checkbox">
+                        <input type="checkbox" onclick="completeTask(${todos.indexOf(todo)})">
+                    </td>
+                `;
+                scheduleTable.appendChild(row);
+            });
+        }
+
+        // Complete Task Function
+        function completeTask(index) {
+            completedTasks++;
+            const progressBar = document.getElementById('progressBar');
+            const completedPercentage = (completedTasks / todos.length) * 100;
+            progressBar.style.width = `${completedPercentage}%`;
+
+            // Update Analytics chart
+            updateAnalytics();
+        }
+
+        // Analytics Chart
+        function updateAnalytics() {
+            const timeSpent = todos.reduce((total, todo) => total + parseFloat(todo.timeRequired), 0);
+            const completedPercentage = (completedTasks / todos.length) * 100;
+
+            const ctx = document.getElementById('studyChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Completed', 'Remaining'],
+                    datasets: [{
+                        data: [completedTasks, todos.length - completedTasks],
+                        backgroundColor: ['#2f80ed', '#ddd'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (tooltipItem) => {
+                                    if (tooltipItem.label === 'Completed') {
+                                        return `Completed: ${completedPercentage}% (Time Spent: ${timeSpent.toFixed(2)} hrs)`;
+                                    } else {
+                                        return `Remaining: ${100 - completedPercentage}%`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Pomodoro Timer Functionality
+        let timer;
+        let minutes = 25;
+        let seconds = 0;
+
+        function startPomodoro() {
+            if (timer) clearInterval(timer);
+            timer = setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            if (seconds === 0) {
+                if (minutes === 0) {
+                    clearInterval(timer);
+                    alert("Pomodoro session completed!");
+                    return;
+                }
+                minutes--;
+                seconds = 59;
+            } else {
+                seconds--;
+            }
+
+            document.getElementById('timerDisplay').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function resetPomodoro() {
+            clearInterval(timer);
+            minutes = 25;
+            seconds = 0;
+            document.getElementById('timerDisplay').textContent = "25:00";
+        }
+    </script>
+</body>
+</html>
